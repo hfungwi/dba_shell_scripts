@@ -20,3 +20,5 @@ then
 else
   exit 1
 fi
+##usage
+#put_pw :ORACLE:{$ORACLE_SID}:{$ACCOUNT}:
