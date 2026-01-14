@@ -1,0 +1,56 @@
+## shutdown the database and start it up in the mount mode
+set echo on
+alter database backup controlfile to trace as '/u02/fast_recovery_area/$DB/controlfile_recreate';
+        alter system switch logfile;
+        shutdown immediate;
+
+        startup mount;
+
+##delete previous database backup
+
+        delete noprompt backup of database;
+
+#backup full database
+
+       backup as compressed backupset database root tag = 'CDB1_ROOT.BKP';
+       backup as compressed backupset database "pdb$seed" tag = 'CDB1_PDB_SEED.BKP' format '/u02/fast_recovery_area/CDB1/PDBSEED/pdbseed_%t_%s_%p.bkp';
+       backup as compressed backupset database "TESTDB" tag = 'TESTDB_FULL.BKP' format '/u02/fast_recovery_area/$DB/TESTDB/testdb_%t_%s_%p.bkp';
+#backup as compressed backupset pluggable database 3 tag = 'TESTDB_FULL.BKP' format '/u02/fast_recovery_area/$DB/TESTDB/testdb_%t_%s_%p.bkp';
+       delete noprompt backup of controlfile;
+       delete noprompt backup of spfile;
+
+#backup controlfile
+
+backup as compressed backupset current controlfile format'/u02/fast_recovery_area/$DB/controlfile/control_%t_%s_%p.bkp' tag 'controlfile.bkp';
+
+#backup spfile
+backup as compressed backupset spfile format'/u02/fast_recovery_area/$DB/spfile/spfile_%t_%s_%p.bkp' tag 'spfile.bkp';
+
+#show backups
+
+      list backup summary;
+#delete obsolete backups -> Clean up the FRA
+
+        delete noprompt obsolete;
+        delete expired backup;
+        delete noprompt expired archivelog all;
+        delete noprompt expired backup of archivelog all;
+        delete noprompt expired backup of spfile;
+        delete noprompt expired backup of controlfile;
+        delete noprompt archivelog all completed before 'sysdate-8';
+        #delete noprompt archivelog until time 'sysdate-7';
+
+## ENSURE YOUR BACKUPS ARE USABLE
+
+        crosscheck backupset;
+        crosscheck archivelog all;
+
+# show backups
+
+       list backup summary;
+
+## open the database
+
+        alter database open;
+       alter pluggable database TESTDB open read write;
+exit;
