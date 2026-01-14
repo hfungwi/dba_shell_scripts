@@ -1,0 +1,77 @@
+#######################################################
+# Name   : coldbackup.rman                            #
+# author : Harris Fungwi                              #
+# date   : 12/12/2024                                 #
+# desc   : Performs a full consistent database backup #
+#######################################################
+#to spool output
+#spool log to <filename.log>
+###Disable controlfile autobackup
+set echo on
+configure controlfile autobackup off ;
+
+#delete trace backup of controlfile and recreate
+alter database backup controlfile to trace ;
+host 'rm -f /u02/fast_recovery_area/TESTDB/controlfile_recreate';
+alter database backup controlfile to trace as '/u02/fast_recovery_area/TESTDB/controlfile_recreate';
+
+#Shutdown the database and restart it in nomount mode
+        alter system switch logfile;
+        shutdown immediate;
+
+        startup mount;
+
+##delete previous database backup
+
+        delete noprompt backup of database tag 'DB_FULL.BKP';
+
+#backup full database
+
+        backup as compressed backupset database tag = 'DB_FULL.BKP';
+##        backup as compressed backupset database tag = 'DB_FULL_SIMULATE_CAMS.BKP';
+        delete noprompt backup of controlfile tag 'DB_FULL.BKP';
+        delete noprompt backup of controlfile tag 'CONTROLFILE.BKP';
+        delete noprompt backup of controlfile tag like 'TAG%';
+        delete noprompt backup of spfile tag 'SPFILE.BKP';
+
+#backup controlfile
+
+backup as compressed backupset current controlfile format'/u02/fast_recovery_area/TESTDB/controlfile/control_%t_%s_%p.bkp' tag 'controlfile.bkp';
+
+#backup spfile
+backup as compressed backupset spfile format'/u02/fast_recovery_area/TESTDB/spfile/spfile_%t_%s_%p.bkp' tag 'spfile.bkp';
+
+#show backups
+
+      list backup summary;
+#delete obsolete backups -> Clean up the FRA
+
+        delete noprompt obsolete;
+        delete expired backup;
+        delete noprompt expired archivelog all;
+        delete noprompt expired backup of archivelog all;
+        delete noprompt expired backup of spfile;
+        delete noprompt expired backup of controlfile;
+        delete noprompt archivelog all completed before 'sysdate-8';
+        #delete noprompt archivelog until time 'sysdate-7';
+
+## ENSURE YOUR BACKUPS ARE USABLE
+
+        crosscheck backupset;
+        crosscheck archivelog all;
+
+# show backups
+
+       list backup summary;
+
+## open the database
+
+        alter database open;
+        configure controlfile autobackup on;
+
+# change permissions in backup directory
+#host 'chmod -R 770 /u02/fast_recovery_area/TESTDB/*';
+#host 'chgrp -R dba /u02/fast_recovery_area/TESTDB/*';
+#
+# end of backup script
+exit;
