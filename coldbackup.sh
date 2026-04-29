@@ -36,7 +36,7 @@ if [ -n "$ERRORS" ]; then
         SUBJECT="ORACLE ALERT:Errors occured during the backup of $DB"
         BODY="The following errors occured during the $DB BACKUP:\n\n $ERRORS"
         RECIPIENTS="example@localhost.com"
-        FROM="oracle_alerts@localhost.boeing.com"
+        FROM="oracle_alerts@localhost.com"
 
 echo -e "$BODY" | mail -r "$FROM" -s "$SUBJECT" "$RECIPIENTS"
 fi
